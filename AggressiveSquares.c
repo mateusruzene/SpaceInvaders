@@ -1,16 +1,15 @@
-// Compilação: gcc AggressiveSquares.c Square.c Joystick.c Bullet.c Pistol.c -o AS $(pkg-config allegro-5 allegro_main-5 allegro_font-5 allegro_primitives-5 allegro_image-5 --libs --cflags)
 #include <stdlib.h>
 #include <stdio.h>
 
 #include <allegro5/allegro5.h>					 //Biblioteca base do Allegro
 #include <allegro5/allegro_font.h>			 //Biblioteca de fontes do Allegro
 #include <allegro5/allegro_primitives.h> //Biblioteca de figuras básicas
-#include <allegro5/allegro_image.h>
+#include <allegro5/allegro_image.h>			 //Biblioteca de imagens
 
-#include "Player.h" //Inclusão da biblioteca de quadrados
+#include "Player.h" //Inclusão da biblioteca dos players
 
-#define X_SCREEN 1000 // Definição do tamanho da tela em pixels no eixo x
-#define Y_SCREEN 650	// Definição do tamanho da tela em pixels no eixo y
+#define X_SCREEN 500 // Definição do tamanho da tela em pixels no eixo x
+#define Y_SCREEN 500 // Definição do tamanho da tela em pixels no eixo y
 
 // Implementação da função de verificação de colisão entre dois quadrados
 unsigned char collision_2D(player *element_first, player *element_second)
