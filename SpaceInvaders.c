@@ -9,8 +9,23 @@
 #include "Player.h" //Inclusão da biblioteca dos players
 #include "Enemy.h"	//Inclusão da biblioteca dos players
 
-#define X_SCREEN 500 // Definição do tamanho da tela em pixels no eixo x
+#define X_SCREEN 600 // Definição do tamanho da tela em pixels no eixo x
 #define Y_SCREEN 500 // Definição do tamanho da tela em pixels no eixo y
+
+// Tamanho do inimigo
+#define ENEMY_WIDTH 25
+#define ENEMY_HEIGHT 25
+
+// Número de inimigos
+#define ENEMY_AMOUNT 40
+
+// Espaço entre os inimigos
+#define SPACE_X 15
+#define SPACE_Y 10
+
+// Número de colunas e linhas
+#define MATRIX_LINES 5
+#define MATRIX_COLUMNS 10
 
 // Implementação da função que atualiza o posicionamento de projéteis conforme o movimento dos mesmos (!)
 void update_bullets(player *player)
@@ -47,35 +62,94 @@ void update_bullets(player *player)
 }
 
 // Função de atualização das posições dos quadrados conforme os comandos do controle
-void update_position(player *player_1, player *player_2)
+void update_position(player *player_1)
 {
-	// Se o botão de movimentação para esquerda do controle do primeiro jogador está ativado...
 	if (player_1->control->left)
-	{
-		player_move(player_1, 1, 0, X_SCREEN, Y_SCREEN); // Move o quadrado do primeiro jogador para a esquerda
-		if (collision_2D(player_1, player_2))
-			player_move(player_1, -1, 0, X_SCREEN, Y_SCREEN); // Se o movimento causou uma colisão entre quadrados, desfaça o mesmo
-	}
+		player_move(player_1, 1, 0, X_SCREEN, Y_SCREEN);
 
-	// Se o botão de movimentação para direita do controle do primeir ojogador está ativado...
 	if (player_1->control->right)
-	{
-		player_move(player_1, 1, 1, X_SCREEN, Y_SCREEN); // Move o quadrado do primeiro jogador para a direta
-		if (collision_2D(player_1, player_2))
-			player_move(player_1, -1, 1, X_SCREEN, Y_SCREEN); // Se o movimento causou uma colisão entre quadrados, desfaça o mesmo
-	}
+		player_move(player_1, 1, 1, X_SCREEN, Y_SCREEN);
 
 	// Verifica se o primeiro jogador está atirando (!)
 	if (player_1->control->fire)
 	{
 		if (!player_1->gun->timer)
-		{																					// Verifica se a arma do primeiro jogador não está em cooldown (!)
-			player_shot(player_1);									// Se não estiver, faz um disparo (!)
-			player_1->gun->timer = PISTOL_COOLDOWN; // Inicia o cooldown da arma (!)
+		{
+			player_shot(player_1);
+			player_1->gun->timer = PISTOL_COOLDOWN;
 		}
 	}
 
-	update_bullets(player_1); // Atualiza os disparos do primeiro jogador (!)
+	update_bullets(player_1);
+}
+
+void draw_enemy(enemy *e)
+{
+	if (e->type == ENEMY_WEAK)
+		al_draw_filled_rectangle(e->x, e->y, e->x + e->sizeX, e->y + e->sizeY, al_map_rgb(255, 255, 255));
+	if (e->type == ENEMY_NORMAL)
+		al_draw_filled_rectangle(e->x, e->y, e->x + e->sizeX, e->y + e->sizeY, al_map_rgb(255, 0, 0));
+	if (e->type == ENEMY_STRONG)
+		al_draw_filled_rectangle(e->x, e->y, e->x + e->sizeX, e->y + e->sizeY, al_map_rgb(0, 0, 255));
+}
+
+// Função para verificar colisões entre tiros e inimigos
+void check_collision(player *player, enemyMatrix *matrix)
+{
+	bullet *previous_bullet = NULL;
+	bullet *bullet_index = player->gun->shots;
+
+	while (bullet_index != NULL)
+	{
+		int bullet_hit = 0;
+
+		for (unsigned short i = 0; i < matrix->max_y; i++)
+		{
+			for (unsigned short j = 0; j < matrix->max_x; j++)
+			{
+				if (matrix->enemies[i][j].aliveOrDead == IS_ALIVE)
+				{
+					// Verifica se há colisão entre o tiro e o inimigo
+					if (bullet_index->x >= matrix->enemies[i][j].x &&
+							bullet_index->x <= matrix->enemies[i][j].x + ENEMY_WIDTH &&
+							bullet_index->y >= matrix->enemies[i][j].y &&
+							bullet_index->y <= matrix->enemies[i][j].y + ENEMY_HEIGHT)
+					{
+						matrix->enemies[i][j].aliveOrDead = IS_DEAD;
+						bullet_hit = 1;
+						player->points += matrix->enemies[i][j].points;
+						break;
+					}
+				}
+			}
+
+			if (bullet_hit)
+				break;
+		}
+
+		// Remove o tiro da lista se houver colisão
+		if (bullet_hit)
+		{
+			if (previous_bullet)
+			{
+				previous_bullet->next = bullet_index->next;
+				bullet_destroy(bullet_index);
+				bullet_index = (bullet *)previous_bullet->next;
+			}
+			else
+			{
+				player->gun->shots = (bullet *)bullet_index->next;
+				bullet_destroy(bullet_index);
+				bullet_index = player->gun->shots;
+			}
+		}
+		else
+		{
+			// Move para o próximo tiro
+			previous_bullet = bullet_index;
+			bullet_index = (bullet *)bullet_index->next;
+		}
+	}
 }
 
 int main()
@@ -86,7 +160,7 @@ int main()
 	al_install_keyboard();			// Habilita a entrada via teclado (eventos de teclado), no programa
 	al_init_image_addon();
 
-	ALLEGRO_TIMER *timer = al_create_timer(1.0 / 60.0);						 // Cria o relógio do jogo; isso indica quantas atualizações serão realizadas por segundo (30, neste caso)
+	ALLEGRO_TIMER *timer = al_create_timer(1.0 / 30.0);						 // Cria o relógio do jogo; isso indica quantas atualizações serão realizadas por segundo (30, neste caso)
 	ALLEGRO_EVENT_QUEUE *queue = al_create_event_queue();					 // Cria a fila de eventos; todos os eventos (programação orientada a eventos)
 	ALLEGRO_FONT *font = al_create_builtin_font();								 // Carrega uma fonte padrão para escrever na tela (é bitmap, mas também suporta adicionar fontes ttf)
 	ALLEGRO_DISPLAY *disp = al_create_display(X_SCREEN, Y_SCREEN); // Cria uma janela para o programa, define a largura (x) e a altura (y) da tela em píxeis (320x320, neste caso)
@@ -98,6 +172,8 @@ int main()
 	player *player = player_create(21, 0, 10, Y_SCREEN - 21, X_SCREEN, Y_SCREEN);
 	if (!player)
 		return 1;
+
+	enemyMatrix *enemys_matriz = create_enemy_matrix(X_SCREEN, Y_SCREEN, MATRIX_COLUMNS, MATRIX_LINES, ENEMY_WIDTH, ENEMY_HEIGHT, SPACE_X, SPACE_Y);
 
 	ALLEGRO_EVENT event;
 	al_start_timer(timer);
@@ -135,7 +211,22 @@ int main()
 		{
 			al_clear_to_color(al_map_rgb(0, 0, 0)); // Substitui tudo que estava desenhado na tela por um fundo preto
 
-			al_draw_textf(font, al_map_rgb(255, 255, 255), X_SCREEN / 2 - 50, 10, 0, "Tempo: %02d:%02d", minutos, segundos);
+			// Desenha os inimigos na tela
+			for (unsigned short i = 0; i < enemys_matriz->max_y; i++)
+			{
+				for (unsigned short j = 0; j < enemys_matriz->max_x; j++)
+				{
+					if (enemys_matriz->enemies[i][j].aliveOrDead == IS_ALIVE)
+					{
+						draw_enemy(&enemys_matriz->enemies[i][j]);
+					}
+				}
+			}
+
+			al_draw_textf(font, al_map_rgb(255, 255, 255), X_SCREEN / 2 - 40, 10, 0, "Tempo: %02d:%02d", minutos, segundos);
+
+			al_draw_textf(font, al_map_rgb(255, 255, 255), 10, 10, 0, "Pontos: %d", player->points);
+			al_draw_textf(font, al_map_rgb(255, 255, 255), X_SCREEN - 80, 10, 0, "Vidas: %d", player->life);
 
 			// Insere a img do jogador na tela
 			al_draw_bitmap(player_bitmap, player->x - al_get_bitmap_width(player_bitmap) / 2, player->y - al_get_bitmap_height(player_bitmap) / 2, 0);
@@ -145,7 +236,12 @@ int main()
 				al_draw_filled_circle(index->x, index->y, 2, al_map_rgb(255, 0, 0));
 			if (player->gun->timer)
 				player->gun->timer--; // Atualiza o cooldown da arma do primeiro jogador (!)
-			al_flip_display();			// Insere as modificações realizadas nos buffers de tela
+
+			update_position(player);
+			move_enemies(enemys_matriz, X_SCREEN, ENEMY_HEIGHT);
+			check_collision(player, enemys_matriz);
+
+			al_flip_display(); // Insere as modificações realizadas nos buffers de tela
 		}
 		// Verifica se o evento é de botão do teclado abaixado ou levantado
 		else if ((event.type == 10) || (event.type == 12))

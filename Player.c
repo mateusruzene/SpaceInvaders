@@ -19,7 +19,8 @@ player *player_create(unsigned char side, unsigned char face, unsigned short x, 
 	new_player->control = joystick_create(); // Insere o elemento de controle do quadrado
 	new_player->gun = pistol_create();			 // Insere o elemento de disparos do quadrado (!)
 	new_player->life = PLAYER_INITIAL_LIFE;	 // Insere a quantidade de vidas do jogador (!)
-	return new_player;											 // Retorna o novo quadrado
+	new_player->points = 0;
+	return new_player; // Retorna o novo quadrado
 }
 
 void player_move(player *element, char steps, unsigned char trajectory, unsigned short max_x, unsigned short max_y)
