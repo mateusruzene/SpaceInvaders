@@ -18,12 +18,12 @@
 #define PLAYER_HEIGHT 32
 
 // Definições dos inimigos
-#define ENEMY_WIDTH 25		// Largura do inimigo
-#define ENEMY_HEIGHT 25		// Altura do inimigo
-#define SPACE_X 15				// Espaço entre os inimigos X
-#define SPACE_Y 15				// Espaço entre os inimigos Y
-#define MATRIX_LINES 5		// Número de linhas
-#define MATRIX_COLUMNS 10 // Número de colunas
+#define ENEMY_WIDTH 25	 // Largura do inimigo
+#define ENEMY_HEIGHT 25	 // Altura do inimigo
+#define SPACE_X 15			 // Espaço entre os inimigos X
+#define SPACE_Y 15			 // Espaço entre os inimigos Y
+#define MATRIX_LINES 2	 // Número de linhas
+#define MATRIX_COLUMNS 2 // Número de colunas
 
 // Definições dos obstaculos
 #define OBSTACLE_WIDTH 80		 // Largura do obstaculo
@@ -345,6 +345,95 @@ void check_enemy_player_collision(player *player, enemyMatrix *matrix)
 	}
 }
 
+// Função para verificar colisões entre tiros do jogador e tiros dos inimigos
+void check_bullet_collision(player *player, enemyMatrix *matrix)
+{
+	bullet *player_bullet_prev = NULL;
+	bullet *player_bullet_index = player->gun->shots;
+
+	while (player_bullet_index != NULL)
+	{
+		int player_bullet_hit = 0;
+
+		// Verifica colisão com tiros dos inimigos
+		for (unsigned short i = 0; i < matrix->max_y; i++)
+		{
+			for (unsigned short j = 0; j < matrix->max_x; j++)
+			{
+				if (matrix->enemies[i][j].aliveOrDead == IS_ALIVE)
+				{
+					bullet *enemy_bullet_prev = NULL;
+					bullet *enemy_bullet_index = matrix->enemies[i][j].gun->shots;
+
+					while (enemy_bullet_index != NULL)
+					{
+						// Verifica se há colisão entre o tiro do jogador e o tiro do inimigo
+						if (player_bullet_index->x >= enemy_bullet_index->x &&
+								player_bullet_index->x <= enemy_bullet_index->x + 2 &&
+								player_bullet_index->y >= enemy_bullet_index->y &&
+								player_bullet_index->y <= enemy_bullet_index->y + 10)
+						{
+							// Remove os tiros da lista
+							if (player_bullet_prev)
+							{
+								player_bullet_prev->next = player_bullet_index->next;
+								bullet_destroy(player_bullet_index);
+								player_bullet_index = (bullet *)player_bullet_prev->next;
+							}
+							else
+							{
+								player->gun->shots = (bullet *)player_bullet_index->next;
+								bullet_destroy(player_bullet_index);
+								player_bullet_index = player->gun->shots;
+							}
+
+							if (enemy_bullet_prev)
+							{
+								enemy_bullet_prev->next = enemy_bullet_index->next;
+								bullet_destroy(enemy_bullet_index);
+								enemy_bullet_index = (bullet *)enemy_bullet_prev->next;
+							}
+							else
+							{
+								matrix->enemies[i][j].gun->shots = (bullet *)enemy_bullet_index->next;
+								bullet_destroy(enemy_bullet_index);
+								enemy_bullet_index = matrix->enemies[i][j].gun->shots;
+							}
+
+							player_bullet_hit = 1;
+							break;
+						}
+
+						enemy_bullet_prev = enemy_bullet_index;
+						enemy_bullet_index = (bullet *)enemy_bullet_index->next;
+					}
+				}
+
+				if (player_bullet_hit)
+					break;
+			}
+
+			if (player_bullet_hit)
+				break;
+		}
+
+		// Move para o próximo tiro do jogador
+		if (!player_bullet_hit)
+		{
+			player_bullet_prev = player_bullet_index;
+			player_bullet_index = (bullet *)player_bullet_index->next;
+		}
+	}
+}
+
+void print_game_over(player *player, ALLEGRO_FONT *font)
+{
+	al_clear_to_color(al_map_rgb(0, 0, 0)); // Limpe a tela atual para um fundo preto
+	al_draw_text(font, al_map_rgb(255, 0, 0), X_SCREEN / 2 - 60, Y_SCREEN / 2 - 60, 0, "GAME OVER");
+	al_draw_textf(font, al_map_rgb(255, 255, 255), X_SCREEN / 2 - 55, Y_SCREEN / 2 - 30, 0, "SCORE: %d", player->points);
+	al_draw_text(font, al_map_rgb(255, 255, 255), X_SCREEN / 2 - 110, Y_SCREEN / 2 - 15, 0, "Aperte enter para recomeçar");
+}
+
 int main()
 {
 
@@ -353,9 +442,15 @@ int main()
 	al_install_keyboard();			// Habilita a entrada via teclado (eventos de teclado), no programa
 	al_init_image_addon();
 
-	ALLEGRO_TIMER *timer = al_create_timer(1.0 / 30.0);						 // Cria o relógio do jogo; isso indica quantas atualizações serão realizadas por segundo (30, neste caso)
-	ALLEGRO_EVENT_QUEUE *queue = al_create_event_queue();					 // Cria a fila de eventos; todos os eventos (programação orientada a eventos)
-	ALLEGRO_FONT *font = al_create_builtin_font();								 // Carrega uma fonte padrão para escrever na tela (é bitmap, mas também suporta adicionar fontes ttf)
+	ALLEGRO_TIMER *timer = al_create_timer(1.0 / 30.0);		// Cria o relógio do jogo; isso indica quantas atualizações serão realizadas por segundo (30, neste caso)
+	ALLEGRO_EVENT_QUEUE *queue = al_create_event_queue(); // Cria a fila de eventos; todos os eventos (programação orientada a eventos)
+	ALLEGRO_FONT *font = al_create_builtin_font();				// Carrega uma fonte padrão para escrever na tela (é bitmap, mas também suporta adicionar fontes ttf)
+	ALLEGRO_FONT *font_large = al_load_font("fonts/fonte.ttf", 36, 0);
+	if (!font_large)
+	{
+		fprintf(stderr, "Falha ao criar a fonte padrão do Allegro.\n");
+		return -1;
+	}
 	ALLEGRO_DISPLAY *disp = al_create_display(X_SCREEN, Y_SCREEN); // Cria uma janela para o programa, define a largura (x) e a altura (y) da tela em píxeis (320x320, neste caso)
 
 	al_register_event_source(queue, al_get_keyboard_event_source());		// Indica que eventos de teclado serão inseridos na nossa fila de eventos
@@ -416,22 +511,21 @@ int main()
 			else if (event.type == 42)
 				break;
 
-			al_clear_to_color(al_map_rgb(0, 0, 0)); // Limpe a tela atual para um fundo preto
-			al_draw_text(font, al_map_rgb(255, 0, 0), X_SCREEN / 2 - 60, Y_SCREEN / 2 - 45, 0, "GAME OVER");
-			al_draw_textf(font, al_map_rgb(255, 255, 255), X_SCREEN / 2 - 60, Y_SCREEN / 2 - 30, 0, "SCORE: %d", player->points);
-			al_draw_text(font, al_map_rgb(255, 255, 255), X_SCREEN / 2 - 200, Y_SCREEN / 2 - 15, 0, "Aperte enter para recomeçar ou esc para sair");
-
+			al_draw_text(font, al_map_rgb(255, 0, 0), X_SCREEN / 2 - 120, Y_SCREEN / 2 - 80, 0, "GAME OVER");
+			al_draw_textf(font, al_map_rgb(255, 255, 255), X_SCREEN / 2 - 55, Y_SCREEN / 2 - 30, 0, "SCORE: %d", player->points);
+			al_draw_text(font, al_map_rgb(255, 255, 255), X_SCREEN / 2 - 110, Y_SCREEN / 2 - 15, 0, "Aperte enter para recomeçar");
 			al_flip_display();
 		}
 		if (event.type == 30)
 		{
 			al_clear_to_color(al_map_rgb(0, 0, 0)); // Substitui tudo que estava desenhado na tela por um fundo preto
+			check_bullet_collision(player, enemy_matrix);
 			check_player_enemy_collision(player, enemy_matrix);
 
 			int enemy_alive = any_enemy_alive(enemy_matrix);
 			if (!enemy_alive)
 			{
-				destroy_enemy_matrix(enemy_matrix);
+				// destroy_enemy_matrix(enemy_matrix);
 				enemy_matrix = create_enemy_matrix(X_SCREEN, Y_SCREEN, MATRIX_COLUMNS, MATRIX_LINES, ENEMY_WIDTH, ENEMY_HEIGHT, SPACE_X, SPACE_Y);
 
 				if (player->life < 5)
@@ -496,6 +590,7 @@ int main()
 	}
 
 	al_destroy_font(font);								// Destrutor da fonte padrão
+	al_destroy_font(font_large);					// Destrutor da fonte grande
 	al_destroy_display(disp);							// Destrutor da tela
 	al_destroy_timer(timer);							// Destrutor do relógio
 	al_destroy_event_queue(queue);				// Destrutor da fila

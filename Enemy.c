@@ -92,10 +92,8 @@ enemy *create_enemy(unsigned short sizeX, unsigned short sizeY, unsigned short x
 
 void destroy_enemy_matrix(enemyMatrix *matrix)
 {
-	printf("AQUI 1 \n");
 	if (matrix != NULL)
 	{
-		printf("AQUI 2 \n");
 		for (unsigned short i = matrix->max_x - 1; i >= 0; i--)
 		{
 			if (matrix->enemies[i] != NULL)
@@ -103,7 +101,6 @@ void destroy_enemy_matrix(enemyMatrix *matrix)
 				// Libera a memória alocada para os inimigos em cada coluna
 				for (unsigned short j = matrix->max_y - 1; j >= 0; j--)
 				{
-					printf("AQUI 3 %d%d \n", i, j);
 					destroy_enemy(&matrix->enemies[i][j]);
 				}
 				free(matrix->enemies[i]);
@@ -116,17 +113,12 @@ void destroy_enemy_matrix(enemyMatrix *matrix)
 
 void destroy_enemy(enemy *e)
 {
-	printf("AQUI 4 \n");
 
 	if (e != NULL)
 	{
-		printf("AQUI 5 \n");
 		pistol_destroy(e->gun);
-		printf("AQUI 6 \n");
 		free(e);
-		printf("AQUI 7 \n");
 		e = NULL;
-		printf("AQUI 8 \n");
 	}
 }
 

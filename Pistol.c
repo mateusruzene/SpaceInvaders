@@ -28,19 +28,13 @@ bullet *pistol_shot(unsigned short x, unsigned short y, unsigned char trajectory
 void pistol_destroy(pistol *element)
 {
 	bullet *sentinel; // Sentinela para a remoção de projéteis ativos (!)
-	printf("AQUI 5.1 \n");
 
 	// Para cada projétil na lista de disparos (!)
 	for (bullet *index = element->shots; index != NULL; index = sentinel)
 	{
-		printf("AQUI 5.2 \n");
 		sentinel = (bullet *)index->next; // Armazena o próximo projétil (!)
-		printf("AQUI 5.3 \n");
-		bullet_destroy(index); // Chama o destrutor do projétil atual (!)
-		printf("AQUI 5.4 \n");
-		printf("============== \n");
+		bullet_destroy(index);						// Chama o destrutor do projétil atual (!)
 	}
-	printf("AQUI 5.5 \n");
 
 	free(element); // Libera a memória da instância de pistola (!)
 }
