@@ -6,26 +6,30 @@
 #include <allegro5/allegro_primitives.h> //Biblioteca de figuras básicas
 #include <allegro5/allegro_image.h>			 //Biblioteca de imagens
 
-#include "Player.h" //Inclusão da biblioteca dos players
-#include "Enemy.h"	//Inclusão da biblioteca dos players
+#include "Player.h"		//Inclusão da biblioteca do jogador
+#include "Enemy.h"		//Inclusão da biblioteca dos inimigos
+#include "Obstacle.h" //Inclusão da biblioteca dos obstaculos
 
-#define X_SCREEN 600 // Definição do tamanho da tela em pixels no eixo x
-#define Y_SCREEN 500 // Definição do tamanho da tela em pixels no eixo y
+#define X_SCREEN 700 // Definição do tamanho da tela em pixels no eixo x
+#define Y_SCREEN 600 // Definição do tamanho da tela em pixels no eixo y
 
-// Tamanho do inimigo
-#define ENEMY_WIDTH 25
-#define ENEMY_HEIGHT 25
+// Definições do Jogador
+#define PLAYER_WIDTH 32
+#define PLAYER_HEIGHT 32
 
-// Número de inimigos
-#define ENEMY_AMOUNT 40
+// Definições dos inimigos
+#define ENEMY_WIDTH 25		// Largura do inimigo
+#define ENEMY_HEIGHT 25		// Altura do inimigo
+#define SPACE_X 15				// Espaço entre os inimigos X
+#define SPACE_Y 15				// Espaço entre os inimigos Y
+#define MATRIX_LINES 5		// Número de linhas
+#define MATRIX_COLUMNS 10 // Número de colunas
 
-// Espaço entre os inimigos
-#define SPACE_X 15
-#define SPACE_Y 10
-
-// Número de colunas e linhas
-#define MATRIX_LINES 5
-#define MATRIX_COLUMNS 10
+// Definições dos obstaculos
+#define OBSTACLE_WIDTH 80		 // Largura do obstaculo
+#define OBSTACLE_HEIGHT 80	 // Altura do obstaculo
+#define OBSTACLE_AMOUNT 4		 // Número de obstaculos
+#define OBSTACLE_SPACE_X 100 // Espaço entre os obstaculos X
 
 // Implementação da função que atualiza o posicionamento de projéteis conforme o movimento dos mesmos (!)
 void update_bullets(player *player)
@@ -94,7 +98,7 @@ void draw_enemy(enemy *e)
 }
 
 // Função para verificar colisões entre tiros e inimigos
-void check_collision(player *player, enemyMatrix *matrix)
+void check_player_enemy_collision(player *player, enemyMatrix *matrix)
 {
 	bullet *previous_bullet = NULL;
 	bullet *bullet_index = player->gun->shots;
@@ -152,6 +156,195 @@ void check_collision(player *player, enemyMatrix *matrix)
 	}
 }
 
+void draw_enemy_bullets(enemyMatrix *matrix)
+{
+	for (unsigned short i = 0; i < matrix->max_y; i++)
+	{
+		for (unsigned short j = 0; j < matrix->max_x; j++)
+		{
+			if (matrix->enemies[i][j].aliveOrDead == IS_ALIVE)
+			{
+				for (bullet *index = matrix->enemies[i][j].gun->shots; index != NULL; index = (bullet *)index->next)
+				{
+					al_draw_filled_rectangle(index->x, index->y, index->x + 2, index->y + 10, al_map_rgb(255, 0, 0));
+				}
+				if (matrix->enemies[i][j].gun->timer)
+					matrix->enemies[i][j].gun->timer--;
+			}
+		}
+	}
+}
+
+void draw_obstacle(obstacle *o)
+{
+	al_draw_filled_rectangle(o->x, o->y, o->x + o->sizeX, o->y + o->sizeY, al_map_rgb(0, 255, 0));
+}
+
+void check_player_obstacle_collision(player *player, obstacle *obstacle_list)
+{
+	bullet *previous_bullet = NULL;
+	bullet *bullet_index = player->gun->shots;
+
+	while (bullet_index != NULL)
+	{
+		int bullet_hit = 0;
+
+		for (obstacle *current_obstacle = obstacle_list; current_obstacle != NULL; current_obstacle = current_obstacle->next)
+		{
+			if (current_obstacle->life > 0)
+			{
+				// Verifica se há colisão entre o tiro e o obstáculo
+				if (bullet_index->x >= current_obstacle->x &&
+						bullet_index->x <= current_obstacle->x + OBSTACLE_WIDTH &&
+						bullet_index->y >= current_obstacle->y &&
+						bullet_index->y <= current_obstacle->y + OBSTACLE_HEIGHT)
+				{
+					// Reduz a vida do obstáculo
+					current_obstacle->life--;
+
+					// Remove o tiro da lista se houver colisão
+					if (previous_bullet)
+					{
+						previous_bullet->next = bullet_index->next;
+						bullet_destroy(bullet_index);
+						bullet_index = (bullet *)previous_bullet->next;
+					}
+					else
+					{
+						player->gun->shots = (bullet *)bullet_index->next;
+						bullet_destroy(bullet_index);
+						bullet_index = player->gun->shots;
+					}
+
+					bullet_hit = 1;
+					break;
+				}
+			}
+		}
+
+		// Move para o próximo tiro
+		if (!bullet_hit)
+		{
+			previous_bullet = bullet_index;
+			bullet_index = (bullet *)bullet_index->next;
+		}
+	}
+}
+
+void check_enemy_obstacle_collision(enemyMatrix *matrix, obstacle *obstacle_list)
+{
+	for (unsigned short i = 0; i < matrix->max_y; i++)
+	{
+		for (unsigned short j = 0; j < matrix->max_x; j++)
+		{
+			if (matrix->enemies[i][j].aliveOrDead == IS_ALIVE)
+			{
+				bullet *previous_bullet = NULL;
+				bullet *bullet_index = matrix->enemies[i][j].gun->shots;
+
+				while (bullet_index != NULL)
+				{
+					int bullet_hit = 0;
+
+					for (obstacle *current_obstacle = obstacle_list; current_obstacle != NULL; current_obstacle = current_obstacle->next)
+					{
+						if (current_obstacle->life > 0)
+						{
+							// Verifica se há colisão entre o tiro do inimigo e o obstáculo
+							if (bullet_index->x >= current_obstacle->x &&
+									bullet_index->x <= current_obstacle->x + OBSTACLE_WIDTH &&
+									bullet_index->y >= current_obstacle->y &&
+									bullet_index->y <= current_obstacle->y + OBSTACLE_HEIGHT)
+							{
+								// Reduz a vida do obstáculo
+								current_obstacle->life -= matrix->enemies[i][j].damage;
+
+								// Remove o tiro do inimigo da lista
+								if (previous_bullet)
+								{
+									previous_bullet->next = bullet_index->next;
+									bullet_destroy(bullet_index);
+									bullet_index = (bullet *)previous_bullet->next;
+								}
+								else
+								{
+									matrix->enemies[i][j].gun->shots = (bullet *)bullet_index->next;
+									bullet_destroy(bullet_index);
+									bullet_index = matrix->enemies[i][j].gun->shots;
+								}
+
+								bullet_hit = 1;
+								break;
+							}
+						}
+					}
+
+					// Move para o próximo tiro
+					if (!bullet_hit)
+					{
+						previous_bullet = bullet_index;
+						bullet_index = (bullet *)bullet_index->next;
+					}
+				}
+			}
+		}
+	}
+}
+
+void check_enemy_player_collision(player *player, enemyMatrix *matrix)
+{
+	for (unsigned short i = 0; i < matrix->max_y; i++)
+	{
+		for (unsigned short j = 0; j < matrix->max_x; j++)
+		{
+			if (matrix->enemies[i][j].aliveOrDead == IS_ALIVE)
+			{
+				for (bullet *index = matrix->enemies[i][j].gun->shots; index != NULL; index = (bullet *)index->next)
+				{
+					// Verifica se há colisão entre o tiro do inimigo e o jogador
+					if (index->x >= player->x - PLAYER_WIDTH / 2 &&
+							index->x <= player->x + PLAYER_WIDTH / 2 &&
+							index->y >= player->y - PLAYER_HEIGHT / 2 &&
+							index->y <= player->y + PLAYER_HEIGHT / 2)
+					{
+
+						// O jogador foi atingido, faça as ações necessárias, por exemplo, decrementar vidas
+						player->life--;
+
+						// Remove o tiro do inimigo da lista
+						bullet *previous = NULL;
+						bullet *bullet_index = matrix->enemies[i][j].gun->shots;
+
+						while (bullet_index != NULL)
+						{
+							if (bullet_index == index)
+							{
+								if (previous)
+								{
+									previous->next = bullet_index->next;
+									bullet_destroy(bullet_index);
+									index = (bullet *)previous->next;
+								}
+								else
+								{
+									matrix->enemies[i][j].gun->shots = (bullet *)bullet_index->next;
+									bullet_destroy(bullet_index);
+									index = matrix->enemies[i][j].gun->shots;
+								}
+								break;
+							}
+							previous = bullet_index;
+							bullet_index = (bullet *)bullet_index->next;
+						}
+
+						break; // Se houve colisão, passa para o próximo tiro do inimigo
+					}
+				}
+			}
+		}
+	}
+}
+
 int main()
 {
 
@@ -169,11 +362,13 @@ int main()
 	al_register_event_source(queue, al_get_display_event_source(disp)); // Indica que eventos de tela serão inseridos na nossa fila de eventos
 	al_register_event_source(queue, al_get_timer_event_source(timer));	// Indica que eventos de relógio serão inseridos na nossa fila de eventos
 
-	player *player = player_create(21, 0, 10, Y_SCREEN - 21, X_SCREEN, Y_SCREEN);
+	player *player = player_create(PLAYER_WIDTH, 0, X_SCREEN / 2, Y_SCREEN - PLAYER_HEIGHT, X_SCREEN, Y_SCREEN);
 	if (!player)
 		return 1;
 
-	enemyMatrix *enemys_matriz = create_enemy_matrix(X_SCREEN, Y_SCREEN, MATRIX_COLUMNS, MATRIX_LINES, ENEMY_WIDTH, ENEMY_HEIGHT, SPACE_X, SPACE_Y);
+	enemyMatrix *enemy_matrix = create_enemy_matrix(X_SCREEN, Y_SCREEN, MATRIX_COLUMNS, MATRIX_LINES, ENEMY_WIDTH, ENEMY_HEIGHT, SPACE_X, SPACE_Y);
+
+	obstacle *obstacle_list = createObstacleList(X_SCREEN, Y_SCREEN, OBSTACLE_WIDTH, OBSTACLE_HEIGHT, OBSTACLE_SPACE_X, OBSTACLE_AMOUNT);
 
 	ALLEGRO_EVENT event;
 	al_start_timer(timer);
@@ -183,12 +378,12 @@ int main()
 	{
 		al_wait_for_event(queue, &event);
 
-		if ((event.type == 10) && (event.keyboard.keycode == 75))
+		if ((event.type == 10) && (event.keyboard.keycode == ALLEGRO_KEY_ENTER))
 			menu_active = 0;
 
 		al_clear_to_color(al_map_rgb(0, 0, 0)); // Limpe a tela atual para um fundo preto
 		al_draw_text(font, al_map_rgb(0, 255, 0), X_SCREEN / 2 - 60, Y_SCREEN / 2 - 40, 0, "SPACE INVADERS");
-		al_draw_text(font, al_map_rgb(255, 255, 255), X_SCREEN / 2 - 110, Y_SCREEN / 2 - 15, 0, "Aperte espaço para começar");
+		al_draw_text(font, al_map_rgb(255, 255, 255), X_SCREEN / 2 - 110, Y_SCREEN / 2 - 15, 0, "Aperte enter para começar");
 		al_flip_display();
 	}
 
@@ -207,39 +402,82 @@ int main()
 		int minutos = tempo_passado / 60;
 		int segundos = tempo_passado % 60;
 
+		while (player->life <= 0)
+		{
+			al_wait_for_event(queue, &event);
+
+			if ((event.type == 10) && (event.keyboard.keycode == ALLEGRO_KEY_ENTER))
+			{
+				player->life = 3;
+
+				destroy_enemy_matrix(enemy_matrix);
+				enemy_matrix = create_enemy_matrix(X_SCREEN, Y_SCREEN, MATRIX_COLUMNS, MATRIX_LINES, ENEMY_WIDTH, ENEMY_HEIGHT, SPACE_X, SPACE_Y);
+			}
+			else if (event.type == 42)
+				break;
+
+			al_clear_to_color(al_map_rgb(0, 0, 0)); // Limpe a tela atual para um fundo preto
+			al_draw_text(font, al_map_rgb(255, 0, 0), X_SCREEN / 2 - 60, Y_SCREEN / 2 - 45, 0, "GAME OVER");
+			al_draw_textf(font, al_map_rgb(255, 255, 255), X_SCREEN / 2 - 60, Y_SCREEN / 2 - 30, 0, "SCORE: %d", player->points);
+			al_draw_text(font, al_map_rgb(255, 255, 255), X_SCREEN / 2 - 200, Y_SCREEN / 2 - 15, 0, "Aperte enter para recomeçar ou esc para sair");
+
+			al_flip_display();
+		}
 		if (event.type == 30)
 		{
 			al_clear_to_color(al_map_rgb(0, 0, 0)); // Substitui tudo que estava desenhado na tela por um fundo preto
+			check_player_enemy_collision(player, enemy_matrix);
+
+			int enemy_alive = any_enemy_alive(enemy_matrix);
+			if (!enemy_alive)
+			{
+				destroy_enemy_matrix(enemy_matrix);
+				enemy_matrix = create_enemy_matrix(X_SCREEN, Y_SCREEN, MATRIX_COLUMNS, MATRIX_LINES, ENEMY_WIDTH, ENEMY_HEIGHT, SPACE_X, SPACE_Y);
+
+				if (player->life < 5)
+					player->life += 1;
+			}
+
+			check_enemy_obstacle_collision(enemy_matrix, obstacle_list);
+			check_player_obstacle_collision(player, obstacle_list);
+			check_enemy_player_collision(player, enemy_matrix);
 
 			// Desenha os inimigos na tela
-			for (unsigned short i = 0; i < enemys_matriz->max_y; i++)
+			for (unsigned short i = 0; i < enemy_matrix->max_y; i++)
 			{
-				for (unsigned short j = 0; j < enemys_matriz->max_x; j++)
+				for (unsigned short j = 0; j < enemy_matrix->max_x; j++)
 				{
-					if (enemys_matriz->enemies[i][j].aliveOrDead == IS_ALIVE)
+					if (enemy_matrix->enemies[i][j].aliveOrDead == IS_ALIVE)
 					{
-						draw_enemy(&enemys_matriz->enemies[i][j]);
+						draw_enemy(&enemy_matrix->enemies[i][j]);
 					}
 				}
 			}
 
-			al_draw_textf(font, al_map_rgb(255, 255, 255), X_SCREEN / 2 - 40, 10, 0, "Tempo: %02d:%02d", minutos, segundos);
+			for (obstacle *current = obstacle_list; current != NULL; current = current->next)
+			{
+				if (current->life > 0)
+					draw_obstacle(current);
+			}
+			// Insere as balas existentes disparadas pelo primeiro jogador na tela (!)
+			for (bullet *index = player->gun->shots; index != NULL; index = (bullet *)index->next)
+				al_draw_filled_rectangle(index->x, index->y, index->x + 2, index->y + 10, al_map_rgb(0, 255, 0));
 
-			al_draw_textf(font, al_map_rgb(255, 255, 255), 10, 10, 0, "Pontos: %d", player->points);
-			al_draw_textf(font, al_map_rgb(255, 255, 255), X_SCREEN - 80, 10, 0, "Vidas: %d", player->life);
+			if (player->gun->timer)
+				player->gun->timer--; // Atualiza o cooldown da arma do primeiro jogador (!)
+
+			random_enemy_bullets(enemy_matrix, ENEMY_SHOOTS_AMOUNT);
+			update_position(player);
+			move_enemies(enemy_matrix, X_SCREEN, Y_SCREEN);
+
+			al_draw_textf(font, al_map_rgb(255, 255, 255), 10, 10, 0, "SCORE: %d", player->points);
+			al_draw_textf(font, al_map_rgb(255, 255, 255), X_SCREEN / 2 - 40, 10, 0, "TIME: %02d:%02d", minutos, segundos);
+			al_draw_textf(font, al_map_rgb(255, 255, 255), X_SCREEN - 80, 10, 0, "LIFES: %d", player->life);
 
 			// Insere a img do jogador na tela
 			al_draw_bitmap(player_bitmap, player->x - al_get_bitmap_width(player_bitmap) / 2, player->y - al_get_bitmap_height(player_bitmap) / 2, 0);
 
-			// Insere as balas existentes disparadas pelo primeiro jogador na tela (!)
-			for (bullet *index = player->gun->shots; index != NULL; index = (bullet *)index->next)
-				al_draw_filled_circle(index->x, index->y, 2, al_map_rgb(255, 0, 0));
-			if (player->gun->timer)
-				player->gun->timer--; // Atualiza o cooldown da arma do primeiro jogador (!)
-
-			update_position(player);
-			move_enemies(enemys_matriz, X_SCREEN, ENEMY_HEIGHT);
-			check_collision(player, enemys_matriz);
+			draw_enemy_bullets(enemy_matrix);
 
 			al_flip_display(); // Insere as modificações realizadas nos buffers de tela
 		}
@@ -250,18 +488,20 @@ int main()
 				joystick_left(player->control); // Indica o evento correspondente no controle do primeiro jogador (botão de movimentação à esquerda)
 			else if (event.keyboard.keycode == 4)
 				joystick_right(player->control); // Indica o evento correspondente no controle do primeiro jogador (botão de movimentação à direita)
-			else if (event.keyboard.keycode == 3)
+			else if (event.keyboard.keycode == 75)
 				joystick_fire(player->control); // Indica o evento correspondente no controle do primeiro joagdor (botão de disparo - c) (!)
 		}
 		else if (event.type == 42)
 			break; // Evento de clique no "X" de fechamento da tela. Encerra o programa graciosamente.
 	}
 
-	al_destroy_font(font);				 // Destrutor da fonte padrão
-	al_destroy_display(disp);			 // Destrutor da tela
-	al_destroy_timer(timer);			 // Destrutor do relógio
-	al_destroy_event_queue(queue); // Destrutor da fila
-	player_destroy(player);				 // Destrutor do quadrado do primeiro jogador
+	al_destroy_font(font);								// Destrutor da fonte padrão
+	al_destroy_display(disp);							// Destrutor da tela
+	al_destroy_timer(timer);							// Destrutor do relógio
+	al_destroy_event_queue(queue);				// Destrutor da fila
+	destroy_enemy_matrix(enemy_matrix);		// Destrutor dos inimigos
+	destroy_obstacle_list(obstacle_list); // Destrutor dos obstaculos
+	player_destroy(player);								// Destrutor do jogador
 
 	return 0;
 }

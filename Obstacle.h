@@ -10,16 +10,15 @@ typedef struct obstacle
 	unsigned short x;
 	unsigned short y;
 	unsigned short life;
-	unsigned short id;
 	struct obstacle *next;
 } obstacle;
 
-obstacle *createObstacle(unsigned short sizeX, unsigned short sizeY, unsigned short x, unsigned short y, unsigned short life, unsigned short id);
+obstacle *createObstacle(unsigned short sizeX, unsigned short sizeY, unsigned short x, unsigned short y, unsigned short life);
 
-obstacle *createObstacleList(unsigned short boardSizeX, unsigned short boardSizeY, unsigned short obstacleSizeX, unsigned short obstacleSizeY);
+obstacle *createObstacleList(unsigned short boardSizeX, unsigned short boardSizeY, unsigned short obstacleSizeX, unsigned short obstacleSizeY, unsigned short spaceX, unsigned short amount);
 
-void destroyObstacle(obstacle *element);
+void destroy_obstacle(obstacle *element);
 
-void destroyObstacleList(obstacle *list);
+void destroy_obstacle_list(obstacle *list);
 
 #endif

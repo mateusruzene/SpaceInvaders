@@ -5,7 +5,7 @@ LIBS = $(shell pkg-config allegro-5 allegro_main-5 allegro_font-5 allegro_primit
 SRCS = SpaceInvaders.c Player.c Enemy.c Obstacle.c Joystick.c Bullet.c Pistol.c
 OBJS = $(SRCS:.c=.o)
 
-TARGET = AS
+TARGET = game
 
 $(TARGET): $(OBJS)
 	$(CC) -o $@ $(OBJS) $(LIBS)
