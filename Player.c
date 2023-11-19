@@ -50,7 +50,7 @@ void player_shot(player *element)
 		element->gun->shots = shot;
 }
 
-void player_destroy(player *element)
+void destroy_player(player *element)
 {																			// Implementação da função "player_destroy"
 	pistol_destroy(element->gun);				// Destrói o armemento do quadrado (!)
 	joystick_destroy(element->control); // Destrói o controle do quadrado

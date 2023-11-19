@@ -13,9 +13,9 @@ typedef struct obstacle
 	struct obstacle *next;
 } obstacle;
 
-obstacle *createObstacle(unsigned short sizeX, unsigned short sizeY, unsigned short x, unsigned short y, unsigned short life);
+obstacle *create_obstacle(unsigned short sizeX, unsigned short sizeY, unsigned short x, unsigned short y, unsigned short life);
 
-obstacle *createObstacleList(unsigned short boardSizeX, unsigned short boardSizeY, unsigned short obstacleSizeX, unsigned short obstacleSizeY, unsigned short spaceX, unsigned short amount);
+obstacle *create_obstacle_list(unsigned short boardSizeX, unsigned short boardSizeY, unsigned short obstacleSizeX, unsigned short obstacleSizeY, unsigned short spaceX, unsigned short amount);
 
 void destroy_obstacle(obstacle *element);
 

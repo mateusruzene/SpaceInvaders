@@ -37,4 +37,5 @@ void pistol_destroy(pistol *element)
 	}
 
 	free(element); // Libera a memória da instância de pistola (!)
+	element = NULL;
 }

@@ -90,11 +90,32 @@ enemy *create_enemy(unsigned short sizeX, unsigned short sizeY, unsigned short x
 	return newEnemy;
 }
 
+// void destroy_enemy_matrix(enemyMatrix *matrix)
+// {
+// 	if (matrix != NULL)
+// 	{
+// 		for (unsigned short i = matrix->max_x - 1; i >= 0; i--)
+// 		{
+// 			if (matrix->enemies[i] != NULL)
+// 			{
+// 				// Libera a memória alocada para os inimigos em cada coluna
+// 				for (unsigned short j = matrix->max_y - 1; j >= 0; j--)
+// 				{
+// 					destroy_enemy(&matrix->enemies[i][j]);
+// 				}
+// 				free(matrix->enemies[i]);
+// 			}
+// 		}
+// 		free(matrix->enemies);
+// 		free(matrix);
+// 	}
+// }
+
 void destroy_enemy_matrix(enemyMatrix *matrix)
 {
 	if (matrix != NULL)
 	{
-		for (unsigned short i = matrix->max_x - 1; i >= 0; i--)
+		for (unsigned short i = 0; i < matrix->max_x - 1; i++) // Correção aqui
 		{
 			if (matrix->enemies[i] != NULL)
 			{
@@ -104,52 +125,23 @@ void destroy_enemy_matrix(enemyMatrix *matrix)
 					destroy_enemy(&matrix->enemies[i][j]);
 				}
 				free(matrix->enemies[i]);
+				matrix->enemies[i] = NULL;
 			}
 		}
 		free(matrix->enemies);
 		free(matrix);
+		matrix = NULL;
 	}
 }
 
 void destroy_enemy(enemy *e)
 {
-
 	if (e != NULL)
 	{
-		pistol_destroy(e->gun);
+		if (e->gun != NULL)
+			pistol_destroy(e->gun);
+
 		free(e);
-		e = NULL;
-	}
-}
-
-void print_enemy_matrix(enemyMatrix *matrix)
-{
-	if (matrix == NULL)
-	{
-		printf("Matrix is NULL\n");
-		return;
-	}
-	printf("TESTE (%d, %d):\n", matrix->max_x, matrix->max_y);
-
-	for (unsigned short i = 0; i < matrix->max_y; i++)
-	{
-		for (unsigned short j = 0; j < matrix->max_x; j++)
-		{
-			if (matrix->enemies[i][j].aliveOrDead == IS_ALIVE)
-			{
-				printf("Enemy at position (%d, %d):\n", i, j);
-				printf("SizeX: %d\n", matrix->enemies[i][j].sizeX);
-				printf("SizeY: %d\n", matrix->enemies[i][j].sizeY);
-				printf("X: %d\n", matrix->enemies[i][j].x);
-				printf("Y: %d\n", matrix->enemies[i][j].y);
-				printf("Type: %d\n", matrix->enemies[i][j].type);
-				printf("\n");
-			}
-			else
-			{
-				printf("No enemy at position (%d, %d)\n", i, j);
-			}
-		}
 	}
 }
 
@@ -236,7 +228,6 @@ void update_enemy_bullets(enemyMatrix *matrix, unsigned short y_screen)
 // Função para escolher inimigos aleatórios vivos para atirarem contra o jogador
 void random_enemy_bullets(enemyMatrix *matrix, int numEnemies)
 {
-	// Inicializa a semente para a função rand()
 	srand(time(NULL));
 
 	int livingEnemies = 0;
@@ -306,4 +297,39 @@ int any_enemy_alive(enemyMatrix *matrix)
 		}
 	}
 	return 0;
+}
+
+bonusEnemy *create_bonus_enemy(unsigned short sizeX, unsigned short sizeY, unsigned short x, unsigned short y)
+{
+	bonusEnemy *bonus = (bonusEnemy *)malloc(sizeof(bonusEnemy));
+	if (!bonus)
+	{
+		fprintf(stderr, "Falha ao alocar memória para o inimigo bônus.\n");
+		exit(EXIT_FAILURE);
+	}
+	bonus->x = x;
+	bonus->y = y;
+	bonus->sizeX = sizeX;
+	bonus->sizeY = sizeY;
+	bonus->points = ENEMY_POINTS_BONUS;
+	return bonus;
+}
+
+void destroy_bonus_enemy(bonusEnemy *bonus)
+{
+	free(bonus);
+	bonus = NULL;
+}
+
+void move_bonus_enemy(bonusEnemy *bonus, unsigned short screenWidth)
+{
+	// Modifique a posição do bônus para movê-lo
+	bonus->x += BONUS_ENEMY_SPEED;
+
+	// Verifique se o bônus atingiu as bordas da tela
+	if (bonus->x > screenWidth || bonus->x < 0)
+	{
+		// Se atingiu, reposicione o bônus na borda oposta
+		bonus->x = (bonus->x > screenWidth) ? 0 : screenWidth;
+	}
 }

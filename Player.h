@@ -29,6 +29,6 @@ void player_move(player *element, char steps, unsigned char trajectory, unsigned
 void player_shot(player *element);
 
 // Protótipo da função de destruição de um quadrado
-void player_destroy(player *element);
+void destroy_player(player *element);
 
 #endif

@@ -3,7 +3,7 @@
 
 #include "Obstacle.h"
 
-obstacle *createObstacle(unsigned short sizeX, unsigned short sizeY, unsigned short x, unsigned short y, unsigned short life)
+obstacle *create_obstacle(unsigned short sizeX, unsigned short sizeY, unsigned short x, unsigned short y, unsigned short life)
 {
   obstacle *newObstacle = (obstacle *)malloc(sizeof(obstacle));
   if (newObstacle == NULL)
@@ -22,7 +22,7 @@ obstacle *createObstacle(unsigned short sizeX, unsigned short sizeY, unsigned sh
   return newObstacle;
 }
 
-obstacle *createObstacleList(unsigned short boardSizeX, unsigned short boardSizeY, unsigned short obstacleSizeX, unsigned short obstacleSizeY, unsigned short spaceX, unsigned short amount)
+obstacle *create_obstacle_list(unsigned short boardSizeX, unsigned short boardSizeY, unsigned short obstacleSizeX, unsigned short obstacleSizeY, unsigned short spaceX, unsigned short amount)
 {
   obstacle *list = NULL;
 
@@ -36,7 +36,7 @@ obstacle *createObstacleList(unsigned short boardSizeX, unsigned short boardSize
   {
     int posX = startX + i * (obstacleSizeX + spaceX);
 
-    obstacle *newObstacle = createObstacle(obstacleSizeX, obstacleSizeY, posX, boardSizeY - 200, OBSTACLE_INITIAL_LIFE);
+    obstacle *newObstacle = create_obstacle(obstacleSizeX, obstacleSizeY, posX, boardSizeY - 200, OBSTACLE_INITIAL_LIFE);
     newObstacle->next = list;
     list = newObstacle;
   }
